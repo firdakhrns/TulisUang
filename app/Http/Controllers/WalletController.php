@@ -4,21 +4,30 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Wallet;
+use App\Models\Transaction;
 use Illuminate\Support\Facades\Auth;
 
 class WalletController extends Controller
 {
     /**
-     * Display a listing of the resource.
+     * Menampilkan semua dompet.
      */
     public function index()
     {
         $wallets = Wallet::where('user_id', Auth::id())->get();
+
+        // Hitung saldo akhir dari: saldo_awal + pemasukan - pengeluaran
+        foreach ($wallets as $wallet) {
+            $income = $wallet->transactions()->where('type', 'income')->sum('amount');
+            $expense = $wallet->transactions()->where('type', 'expense')->sum('amount');
+            $wallet->final_balance = $wallet->balance + $income - $expense;
+        }
+
         return view('wallets.index', compact('wallets'));
     }
 
     /**
-     * Show the form for creating a new resource.
+     * Form tambah dompet.
      */
     public function create()
     {
@@ -26,11 +35,16 @@ class WalletController extends Controller
     }
 
     /**
-     * Store a newly created resource in storage.
+     * Simpan dompet baru.
      */
     public function store(Request $request)
     {
         $request->validate([
+            'name' => 'required|string|max:100',
+            'balance' => 'required|numeric|min:0',
+        ]);
+
+        Wallet::create([
             'user_id' => Auth::id(),
             'name' => $request->name,
             'balance' => $request->balance,
@@ -40,15 +54,21 @@ class WalletController extends Controller
     }
 
     /**
-     * Display the specified resource.
+     * Menampilkan detail dompet.
      */
-    public function show(string $id)
+    public function show(Wallet $wallet)
     {
-        //
+        $this->authorizeWallet($wallet);
+
+        $income = $wallet->transactions()->where('type', 'income')->sum('amount');
+        $expense = $wallet->transactions()->where('type', 'expense')->sum('amount');
+        $wallet->final_balance = $wallet->balance + $income - $expense;
+
+        return view('wallets.show', compact('wallet'));
     }
 
     /**
-     * Show the form for editing the specified resource.
+     * Form edit dompet.
      */
     public function edit(Wallet $wallet)
     {
@@ -57,24 +77,27 @@ class WalletController extends Controller
     }
 
     /**
-     * Update the specified resource in storage.
+     * Update dompet.
      */
     public function update(Request $request, Wallet $wallet)
     {
-        $this->AuthorizeWallet($wallet);
+        $this->authorizeWallet($wallet);
 
         $request->validate([
-            'name' =>'required|string|max:100',
-            'balance' =>'required|numeric',
+            'name' => 'required|string|max:100',
+            'balance' => 'required|numeric|min:0',
         ]);
 
-        $wallet->update($request->only('name', 'balance'));
+        $wallet->update([
+            'name' => $request->name,
+            'balance' => $request->balance,
+        ]);
 
         return redirect()->route('wallets.index')->with('success', 'Wallet berhasil diperbarui.');
     }
 
     /**
-     * Remove the specified resource from storage.
+     * Hapus dompet.
      */
     public function destroy(Wallet $wallet)
     {
@@ -84,6 +107,9 @@ class WalletController extends Controller
         return redirect()->route('wallets.index')->with('success', 'Wallet berhasil dihapus.');
     }
 
+    /**
+     * Pastikan dompet milik user yang login.
+     */
     private function authorizeWallet(Wallet $wallet)
     {
         if ($wallet->user_id !== Auth::id()) {

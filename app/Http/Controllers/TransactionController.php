@@ -33,34 +33,42 @@ class TransactionController extends Controller
      * Store a newly created resource in storage.
      */
     public function store(Request $request)
-    {
-        $request->validate([
-            'wallet_id' => 'required|exists:wallets,id',
-            'category_id' => 'required|exists:categories,id',
-            'amount' => 'required|numeric',
-            'description' => 'nullable|string',
-            'date' => 'required|date',
-        ]);
+{
+    $request->validate([
+        'name' => 'required|string|max:255',
+        'wallet_id' => 'required|exists:wallets,id',
+        'category_id' => 'required|exists:categories,id',
+        'type' => 'required|in:income,expense',
+        'amount' => 'required|numeric',
+        'description' => 'nullable|string',
+        'date' => 'required|date',
+    ]);
 
-        Transaction::create([
-            'user_id' => Auth::id(),
-            'wallet_id' => $request->wallet_id,
-            'category_id' => $request->category_id,
-            'amount' => $request->amount,
-            'description' => $request->description,
-            'date' => $request->date,
-        ]);
+    Transaction::create([
+        'user_id' => Auth::id(),
+        'name' => $request->name,
+        'wallet_id' => $request->wallet_id,
+        'category_id' => $request->category_id,
+        'type' => $request->type,
+        'amount' => $request->amount,
+        'description' => $request->description,
+        'date' => $request->date,
+    ]);
 
-        return redirect()->route('transactions.index')->with('success', 'Transaksi berhasil ditambahkan.');
-    }
+    return redirect()->route('transactions.index')->with('success', 'Transaksi berhasil ditambahkan.');
+}
+
 
     /**
      * Display the specified resource.
      */
-    public function show(string $id)
+    
+    public function show(Transaction $transaction)
     {
-        //
+        $this->authorizeTransaction($transaction);
+        return view('transactions.show', compact('transaction'));
     }
+
 
     /**
      * Show the form for editing the specified resource.
@@ -78,21 +86,30 @@ class TransactionController extends Controller
      * Update the specified resource in storage.
      */
     public function update(Request $request, Transaction $transaction)
-    {
-        $this->authorizeTransaction($transaction);
+{
+    $this->authorizeTransaction($transaction);
 
-        $request->validate([
-            'wallet_id' => 'required|exists:wallets,id',
-            'category_id' => 'required|exists:categories,id',
-            'amount' => 'required|numeric',
-            'description' => 'nullable|string',
-            'date' => 'required|date',
-        ]);
+    $request->validate([
+        'wallet_id' => 'required|exists:wallets,id',
+        'category_id' => 'required|exists:categories,id',
+        'type' => 'required|in:income,expense', // ✅ tambahkan validasi type
+        'amount' => 'required|numeric',
+        'description' => 'nullable|string',
+        'date' => 'required|date',
+    ]);
 
-        $transaction->update($request->only('wallet_id', 'category_id', 'amount', 'description', 'date'));
+    $transaction->update($request->only(
+    'name',
+    'wallet_id',
+    'category_id',
+    'type',
+    'amount',
+    'description',
+    'date'
+));
 
-        return redirect()->route('transactions.index')->with('success', 'Transaksi berhasil diperbarui.');
-    }
+    return redirect()->route('transactions.index')->with('success', 'Transaksi berhasil diperbarui.');
+}
 
     /**
      * Remove the specified resource from storage.
