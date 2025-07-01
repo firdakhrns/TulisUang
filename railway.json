@@ -3,6 +3,6 @@
     "command": "composer install && npm install && npm run build"
   },
   "start": {
-    "command": "php artisan serve --host=0.0.0.0 --port=$PORT"
+    "command": "php artisan migrate --force && php artisan serve --host=0.0.0.0 --port=$PORT"
   }
 }
