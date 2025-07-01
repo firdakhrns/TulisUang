@@ -17,7 +17,7 @@
                 </a>
             </div>
 
-            {{-- Notifikasi --}}
+            {{-- Notifikasi berhasil--}}
             @if (session('success'))
                 <div class="p-4 bg-green-100 border border-green-300 text-green-800 rounded-lg">
                     {{ session('success') }}
